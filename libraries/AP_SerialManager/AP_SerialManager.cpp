@@ -570,6 +570,12 @@ void AP_SerialManager::init()
                     // Note init is handled by AP_MSP
                     break;
 #endif
+                // case SerialProtocol_Realtime_Control:
+                //     state[i].baud = AP_SERIALMANAGER_REALTIME_CONTROL_BAUD;
+                //     uart->begin(AP_SERIALMANAGER_REALTIME_CONTROL_BAUD,
+                //                          AP_SERIALMANAGER_REALTIME_CONTROL_BUFSIZE_RX,
+                //                          AP_SERIALMANAGER_REALTIME_CONTROL_BUFSIZE_TX);
+                //     break;
                 default:
                     uart->begin(map_baudrate(state[i].baud));
             }

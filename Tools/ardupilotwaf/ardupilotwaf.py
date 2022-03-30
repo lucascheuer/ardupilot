@@ -110,6 +110,7 @@ COMMON_VEHICLE_DEPENDENT_LIBRARIES = [
     'AP_FETtecOneWire',
     'AP_Torqeedo',
     'AP_CustomRotations'
+	'AP_Realtime_Control',
 ]
 
 def get_legacy_defines(sketch_name, bld):

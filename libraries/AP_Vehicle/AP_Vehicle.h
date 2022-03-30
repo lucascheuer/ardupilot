@@ -48,6 +48,8 @@
 #include <AP_Frsky_Telem/AP_Frsky_Parameters.h>
 #include <AP_ExternalAHRS/AP_ExternalAHRS.h>
 #include <AP_VideoTX/AP_SmartAudio.h>
+#include <AP_Realtime_Control/AP_Realtime_Control.h>
+#if CONFIG_HAL_BOARD == HAL_BOARD_SITL
 #include <SITL/SITL.h>
 #include <AP_CustomRotations/AP_CustomRotations.h>
 
@@ -379,6 +381,9 @@ protected:
     AP_Airspeed airspeed;
 #endif
 
+#if HAL_RTCTRL_ENABLED
+	AP_Realtime_Control rt_control;
+#endif
     static const struct AP_Param::GroupInfo var_info[];
     static const struct AP_Scheduler::Task scheduler_tasks[];
 

@@ -209,6 +209,9 @@ void AP_Vehicle::setup()
 #endif
 
     custom_rotations.init();
+#if HAL_RTCTRL_ENABLED
+	rt_control.init();
+#endif
 
     gcs().send_text(MAV_SEVERITY_INFO, "ArduPilot Ready");
 }

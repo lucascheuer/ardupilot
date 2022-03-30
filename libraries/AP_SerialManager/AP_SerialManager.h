@@ -116,6 +116,11 @@
 #define AP_SERIALMANAGER_MSP_BUFSIZE_TX     256
 #define AP_SERIALMANAGER_MSP_BAUD           115200
 
+// Realtime_Control protocol settings
+#define AP_SERIALMANAGER_REALTIME_CONTROL_BAUD 921600
+#define AP_SERIALMANAGER_REALTIME_CONTROL_BUFSIZE_RX     128
+#define AP_SERIALMANAGER_REALTIME_CONTROL_BUFSIZE_TX     128
+
 class AP_SerialManager {
 public:
     AP_SerialManager();
@@ -170,6 +175,7 @@ public:
         SerialProtocol_CoDevESC = 41,
         SerialProtocol_MSP_DisplayPort = 42,
         SerialProtocol_MAVLinkHL = 43,
+		SerialProtocol_Realtime_Control = 44,
         SerialProtocol_NumProtocols                    // must be the last value
     };
 
