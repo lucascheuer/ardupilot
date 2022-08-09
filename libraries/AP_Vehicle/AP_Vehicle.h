@@ -21,6 +21,8 @@
 
 #include "ModeReason.h" // reasons can't be defined in this header due to circular loops
 
+#include <AP_AHRS/AP_AHRS.h>
+#include <AP_Airspeed/AP_Airspeed.h>
 #include <AP_Baro/AP_Baro.h>
 #include <AP_BoardConfig/AP_BoardConfig.h>     // board configuration library
 #include <AP_CANManager/AP_CANManager.h>
@@ -29,7 +31,6 @@
 #include <AP_EFI/AP_EFI.h>
 #include <AP_GPS/AP_GPS.h>
 #include <AP_Generator/AP_Generator.h>
-#include <AP_Logger/AP_Logger.h>
 #include <AP_Notify/AP_Notify.h>                    // Notify library
 #include <AP_Param/AP_Param.h>
 #include <AP_RangeFinder/AP_RangeFinder.h>
@@ -48,10 +49,12 @@
 #include <AP_Frsky_Telem/AP_Frsky_Parameters.h>
 #include <AP_ExternalAHRS/AP_ExternalAHRS.h>
 #include <AP_VideoTX/AP_SmartAudio.h>
+#include <AP_VideoTX/AP_Tramp.h>
 #include <AP_Realtime_Control/AP_Realtime_Control.h>
-#if CONFIG_HAL_BOARD == HAL_BOARD_SITL
 #include <SITL/SITL.h>
 #include <AP_CustomRotations/AP_CustomRotations.h>
+#include <AP_AIS/AP_AIS.h>
+#include <AC_Fence/AC_Fence.h>
 
 class AP_Vehicle : public AP_HAL::HAL::Callbacks {
 
@@ -222,6 +225,9 @@ public:
     // set turn rate in deg/sec and speed in meters/sec (for use by scripting with Rover)
     virtual bool set_desired_turn_rate_and_speed(float turn_rate, float speed) { return false; }
 
+   // set auto mode speed in meters/sec (for use by scripting with Copter/Rover)
+    virtual bool set_desired_speed(float speed) { return false; }
+
     // support for NAV_SCRIPT_TIME mission command
     virtual bool nav_script_time(uint16_t &id, uint8_t &cmd, float &arg1, float &arg2) { return false; }
     virtual void nav_script_time_done(uint16_t id) {}
@@ -229,6 +235,8 @@ public:
     // allow for VTOL velocity matching of a target
     virtual bool set_velocity_match(const Vector2f &velocity) { return false; }
 
+    // returns true if the EKF failsafe has triggered
+    virtual bool has_ekf_failsafed() const { return false; }
 
     // control outputs enumeration
     enum class ControlOutput {
@@ -248,9 +256,6 @@ public:
     virtual bool get_control_output(AP_Vehicle::ControlOutput control_output, float &control_value) { return false; }
 
 #endif // AP_SCRIPTING_ENABLED
-
-    // update the harmonic notch
-    virtual void update_dynamic_notch() {};
 
     // zeroing the RC outputs can prevent unwanted motor movement:
     virtual bool should_zero_rc_outputs_on_reboot() const { return false; }
@@ -291,6 +296,11 @@ public:
     virtual void get_osd_roll_pitch_rad(float &roll, float &pitch) const;
 #endif
 
+    /*
+     get the target body-frame angular velocities in rad/s (Z-axis component used by some gimbals)
+     */
+    virtual bool get_rate_bf_targets(Vector3f& rate_bf_targets) const { return false; }
+
 protected:
 
     virtual void init_ardupilot() = 0;
@@ -306,8 +316,7 @@ protected:
 #endif
 
     // main loop scheduler
-    AP_Scheduler scheduler{FUNCTOR_BIND_MEMBER(&AP_Vehicle::fast_loop, void)};
-    virtual void fast_loop();
+    AP_Scheduler scheduler;
 
     // IMU variables
     // Integration time; time last loop took to run
@@ -372,6 +381,10 @@ protected:
     AP_SmartAudio smartaudio;
 #endif
 
+#if AP_TRAMP_ENABLED
+    AP_Tramp tramp;
+#endif
+
 #if HAL_EFI_ENABLED
     // EFI Engine Monitor
     AP_EFI efi;
@@ -379,6 +392,15 @@ protected:
 
 #if AP_AIRSPEED_ENABLED
     AP_Airspeed airspeed;
+#endif
+
+#if AP_AIS_ENABLED
+    // Automatic Identification System - for tracking sea-going vehicles
+    AP_AIS ais;
+#endif
+
+#if AP_FENCE_ENABLED
+    AC_Fence fence;
 #endif
 
 #if HAL_RTCTRL_ENABLED
@@ -396,6 +418,9 @@ protected:
     void accel_cal_update();
 #endif
 
+    // call the arming library's update function
+    void update_arming();
+
     ModeReason control_mode_reason = ModeReason::UNKNOWN;
 
 #if AP_SIM_ENABLED
@@ -411,12 +436,18 @@ private:
     // statustext:
     void send_watchdog_reset_statustext();
 
+    // update the harmonic notch for throttle based notch
+    void update_throttle_notch(AP_InertialSensor::HarmonicNotch &notch);
+
+    // update the harmonic notch
+    void update_dynamic_notch(AP_InertialSensor::HarmonicNotch &notch);
+
     // run notch update at either loop rate or 200Hz
     void update_dynamic_notch_at_specified_rate();
 
     bool likely_flying;         // true if vehicle is probably flying
     uint32_t _last_flying_ms;   // time when likely_flying last went true
-    uint32_t _last_notch_update_ms; // last time update_dynamic_notch() was run
+    uint32_t _last_notch_update_ms[HAL_INS_NUM_HARMONIC_NOTCH_FILTERS]; // last time update_dynamic_notch() was run
 
     static AP_Vehicle *_singleton;
 

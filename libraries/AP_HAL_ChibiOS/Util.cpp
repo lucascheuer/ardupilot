@@ -86,16 +86,11 @@ void Util::free_type(void *ptr, size_t size, AP_HAL::Util::Memory_Type mem_type)
 
 void *Util::allocate_heap_memory(size_t size)
 {
-    void *buf = malloc(size);
-    if (buf == nullptr) {
+    memory_heap_t *heap = (memory_heap_t *)malloc(size + sizeof(memory_heap_t));
+    if (heap == nullptr) {
         return nullptr;
     }
-
-    memory_heap_t *heap = (memory_heap_t *)malloc(sizeof(memory_heap_t));
-    if (heap != nullptr) {
-        chHeapObjectInit(heap, buf, size);
-    }
-
+    chHeapObjectInit(heap, heap + 1U, size);
     return heap;
 }
 
@@ -466,7 +461,7 @@ __RAMFUNC__ void Util::thread_info(ExpandingString &str)
 // request information on dma contention
 void Util::dma_info(ExpandingString &str)
 {
-#ifndef HAL_NO_SHARED_DMA
+#if AP_HAL_SHARED_DMA_ENABLED
     ChibiOS::Shared_DMA::dma_info(str);
 #endif
 }
@@ -587,7 +582,7 @@ void Util::apply_persistent_params(void) const
                             errors++;
                             break;
                         }
-                        if (!ap->configured_in_storage()) {
+                        if (!ap->configured()) {
                             ap->save();
                         }
                     }
@@ -730,7 +725,7 @@ void Util::log_stack_info(void)
 #if !defined(HAL_BOOTLOADER_BUILD)
 size_t Util::last_crash_dump_size() const
 {
-#if HAL_GCS_ENABLED && HAL_CRASHDUMP_ENABLE
+#if HAL_CRASHDUMP_ENABLE
     // get dump size
     uint32_t size = stm32_crash_dump_size();
     char* dump_start = (char*)stm32_crash_dump_addr();
@@ -749,7 +744,7 @@ size_t Util::last_crash_dump_size() const
 
 void* Util::last_crash_dump_ptr() const
 {
-#if HAL_GCS_ENABLED && HAL_CRASHDUMP_ENABLE
+#if HAL_CRASHDUMP_ENABLE
     if (last_crash_dump_size() == 0) {
         return nullptr;
     }

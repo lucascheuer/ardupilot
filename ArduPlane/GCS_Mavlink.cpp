@@ -290,7 +290,7 @@ void GCS_MAVLINK_Plane::send_wind() const
 }
 
 // sends a single pid info over the provided channel
-void GCS_MAVLINK_Plane::send_pid_info(const AP_Logger::PID_Info *pid_info,
+void GCS_MAVLINK_Plane::send_pid_info(const AP_PIDInfo *pid_info,
                           const uint8_t axis, const float achieved)
 {
     if (pid_info == nullptr) {
@@ -322,7 +322,7 @@ void GCS_MAVLINK_Plane::send_pid_tuning()
 
     const Parameters &g = plane.g;
 
-    const AP_Logger::PID_Info *pid_info;
+    const AP_PIDInfo *pid_info;
     if (g.gcs_pid_mask & TUNING_BITS_ROLL) {
         pid_info = &plane.rollController.get_pid_info();
 #if HAL_QUADPLANE_ENABLED
@@ -591,7 +591,6 @@ static const ap_message STREAM_EXTRA3_msgs[] = {
     MSG_BATTERY_STATUS,
     MSG_MOUNT_STATUS,
     MSG_OPTICAL_FLOW,
-    MSG_GIMBAL_REPORT,
     MSG_MAG_CAL_REPORT,
     MSG_MAG_CAL_PROGRESS,
     MSG_EKF_STATUS_REPORT,
@@ -601,7 +600,8 @@ static const ap_message STREAM_PARAMS_msgs[] = {
     MSG_NEXT_PARAM
 };
 static const ap_message STREAM_ADSB_msgs[] = {
-    MSG_ADSB_VEHICLE
+    MSG_ADSB_VEHICLE,
+    MSG_AIS_VESSEL,
 };
 
 const struct GCS_MAVLINK::stream_entries GCS_MAVLINK::all_stream_entries[] = {
@@ -1097,11 +1097,13 @@ MAV_RESULT GCS_MAVLINK_Plane::handle_command_long_packet(const mavlink_command_l
         return MAV_RESULT_ACCEPTED;
 #endif
 
+#if AP_ICENGINE_ENABLED
     case MAV_CMD_DO_ENGINE_CONTROL:
         if (!plane.g2.ice_control.engine_control(packet.param1, packet.param2, packet.param3)) {
             return MAV_RESULT_FAILED;
         }
         return MAV_RESULT_ACCEPTED;
+#endif
 
 #if AP_SCRIPTING_ENABLED
     case MAV_CMD_DO_FOLLOW:
@@ -1229,23 +1231,6 @@ void GCS_MAVLINK_Plane::handleMessage(const mavlink_message_t &msg)
             plane.guided_state.last_forced_throttle_ms = now;
         }
 
-        break;
-    }
-
-    case MAVLINK_MSG_ID_SET_HOME_POSITION:
-    {
-        send_received_message_deprecation_warning(STR_VALUE(MAVLINK_MSG_ID_SET_HOME_POSITION));
-
-        mavlink_set_home_position_t packet;
-        mavlink_msg_set_home_position_decode(&msg, &packet);
-        Location new_home_loc {};
-        new_home_loc.lat = packet.latitude;
-        new_home_loc.lng = packet.longitude;
-        new_home_loc.alt = packet.altitude / 10;
-        if (!set_home(new_home_loc, false)) {
-            // silently fails...
-            break;
-        }
         break;
     }
 

@@ -236,6 +236,12 @@ SITL::SerialDevice *SITL_State::create_serial_sim(const char *name, const char *
         }
         benewake_tfmini = new SITL::RF_Benewake_TFmini();
         return benewake_tfmini;
+    } else if (streq(name, "teraranger_serial")) {
+        if (teraranger_serial != nullptr) {
+            AP_HAL::panic("Only one teraranger_serial at a time");
+        }
+        teraranger_serial = new SITL::RF_TeraRanger_Serial();
+        return teraranger_serial;
     } else if (streq(name, "lightwareserial")) {
         if (lightwareserial != nullptr) {
             AP_HAL::panic("Only one lightwareserial at a time");
@@ -567,6 +573,9 @@ void SITL_State::_fdm_input_local(void)
     if (benewake_tfmini != nullptr) {
         benewake_tfmini->update(sitl_model->rangefinder_range());
     }
+    if (teraranger_serial != nullptr) {
+        teraranger_serial->update(sitl_model->rangefinder_range());
+    }
     if (lightwareserial != nullptr) {
         lightwareserial->update(sitl_model->rangefinder_range());
     }
@@ -697,6 +706,10 @@ void SITL_State::_simulator_servos(struct sitl_input &input)
         }
         if (_vehicle == Rover) {
             pwm_output[0] = pwm_output[1] = pwm_output[2] = pwm_output[3] = 1500;
+        }
+        if (_vehicle == ArduSub) {
+            pwm_output[0] = pwm_output[1] = pwm_output[2] = pwm_output[3] =
+                    pwm_output[4] = pwm_output[5] = pwm_output[6] = pwm_output[7] = 1500;
         }
     }
 

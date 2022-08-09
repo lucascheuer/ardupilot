@@ -57,7 +57,7 @@ const AP_Param::GroupInfo AP_PiccoloCAN::var_info[] = {
     // @Param: ESC_BM
     // @DisplayName: ESC channels
     // @Description: Bitmask defining which ESC (motor) channels are to be transmitted over Piccolo CAN
-    // @Bitmask: 0: ESC 1, 1: ESC 2, 2: ESC 3, 3: ESC 4, 4: ESC 5, 5: ESC 6, 6: ESC 7, 7: ESC 8, 8: ESC 9, 9: ESC 10, 10: ESC 11, 11: ESC 12, 12: ESC 13, 13: ESC 14, 14: ESC 15, 15: ESC 16
+    // @Bitmask: 0: ESC 1, 1: ESC 2, 2: ESC 3, 3: ESC 4, 4: ESC 5, 5: ESC 6, 6: ESC 7, 7: ESC 8, 8: ESC 9, 9: ESC 10, 10: ESC 11, 11: ESC 12, 12: ESC 13, 13: ESC 14, 14: ESC 15, 15: ESC 16, 16: ESC 17, 17: ESC 18, 18: ESC 19, 19: ESC 20, 20: ESC 21, 21: ESC 22, 22: ESC 23, 23: ESC 24, 24: ESC 25, 25: ESC 26, 26: ESC 27, 27: ESC 28, 28: ESC 29, 29: ESC 30, 30: ESC 31, 31: ESC 32
     // @User: Advanced
     AP_GROUPINFO("ESC_BM", 1, AP_PiccoloCAN, _esc_bm, 0xFFFF),
 
@@ -175,12 +175,12 @@ void AP_PiccoloCAN::loop()
         }
 
         // Calculate the output rate for ESC commands
-        _esc_hz = constrain_int16(_esc_hz, PICCOLO_MSG_RATE_HZ_MIN, PICCOLO_MSG_RATE_HZ_MAX);
+        _esc_hz.set(constrain_int16(_esc_hz, PICCOLO_MSG_RATE_HZ_MIN, PICCOLO_MSG_RATE_HZ_MAX));
 
         uint16_t escCmdRateMs = 1000 / _esc_hz;
 
         // Calculate the output rate for servo commands
-        _srv_hz = constrain_int16(_srv_hz, PICCOLO_MSG_RATE_HZ_MIN, PICCOLO_MSG_RATE_HZ_MAX);
+        _srv_hz.set(constrain_int16(_srv_hz, PICCOLO_MSG_RATE_HZ_MIN, PICCOLO_MSG_RATE_HZ_MAX));
 
         uint16_t servoCmdRateMs = 1000 / _srv_hz;
 

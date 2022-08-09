@@ -102,6 +102,12 @@ bool AP_Arming_Plane::pre_arm_checks(bool display_failure)
        }
     }
 
+    if (plane.mission.get_in_landing_sequence_flag() &&
+        !plane.mission.starts_with_takeoff_cmd()) {
+        check_failed(display_failure,"In landing sequence");
+        ret = false;
+    }
+    
     return ret;
 }
 
@@ -153,13 +159,17 @@ bool AP_Arming_Plane::quadplane_checks(bool display_failure)
     }
 
     // ensure controllers are OK with us arming:
-    char failure_msg[50];
+    char failure_msg[50] = {};
     if (!plane.quadplane.pos_control->pre_arm_checks("PSC", failure_msg, ARRAY_SIZE(failure_msg))) {
         check_failed(ARMING_CHECK_PARAMETERS, display_failure, "Bad parameter: %s", failure_msg);
         ret = false;
     }
     if (!plane.quadplane.attitude_control->pre_arm_checks("ATC", failure_msg, ARRAY_SIZE(failure_msg))) {
         check_failed(ARMING_CHECK_PARAMETERS, display_failure, "Bad parameter: %s", failure_msg);
+        ret = false;
+    }
+    if (!plane.quadplane.motors->check_mot_pwm_params()) {
+        check_failed(ARMING_CHECK_PARAMETERS, display_failure, "Check Q_M_PWM_MIN/MAX");
         ret = false;
     }
 
@@ -174,6 +184,16 @@ bool AP_Arming_Plane::quadplane_checks(bool display_failure)
         }
     }
 
+    if ((plane.control_mode == &plane.mode_auto) && !plane.mission.starts_with_takeoff_cmd()) {
+        check_failed(display_failure,"missing takeoff waypoint");
+        ret = false;
+    }
+
+    if (plane.control_mode == &plane.mode_rtl) {
+        check_failed(display_failure,"in RTL mode");
+        ret = false;
+    }
+    
     /*
       Q_ASSIST_SPEED really should be enabled for all quadplanes except tailsitters
      */
@@ -372,5 +392,29 @@ bool AP_Arming_Plane::mission_checks(bool report)
         ret = false;
         check_failed(ARMING_CHECK_MISSION, report, "DO_LAND_START set and RTL_AUTOLAND disabled");
     }
+#if HAL_QUADPLANE_ENABLED
+    if (plane.quadplane.available()) {
+        const uint16_t num_commands = plane.mission.num_commands();
+        AP_Mission::Mission_Command prev_cmd {};
+        for (uint16_t i=1; i<num_commands; i++) {
+            AP_Mission::Mission_Command cmd;
+            if (!plane.mission.read_cmd_from_storage(i, cmd)) {
+                break;
+            }
+            if ((cmd.id == MAV_CMD_NAV_VTOL_LAND || cmd.id == MAV_CMD_NAV_LAND) &&
+                prev_cmd.id == MAV_CMD_NAV_WAYPOINT) {
+                const float dist = cmd.content.location.get_distance(prev_cmd.content.location);
+                const float tecs_land_speed = plane.TECS_controller.get_land_airspeed();
+                const float landing_speed = is_positive(tecs_land_speed)?tecs_land_speed:plane.aparm.airspeed_cruise_cm*0.01;
+                const float min_dist = 0.75 * plane.quadplane.stopping_distance(sq(landing_speed));
+                if (dist < min_dist) {
+                    ret = false;
+                    check_failed(ARMING_CHECK_MISSION, report, "VTOL land too short, min %.0fm", min_dist);
+                }
+            }
+            prev_cmd = cmd;
+        }
+    }
+#endif
     return ret;
 }

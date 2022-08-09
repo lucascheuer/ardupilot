@@ -7,6 +7,7 @@
 #include "AC_PrecLand_IRLock.h"
 #include "AC_PrecLand_SITL_Gazebo.h"
 #include "AC_PrecLand_SITL.h"
+#include <AP_Logger/AP_Logger.h>
 #include <GCS_MAVLink/GCS.h>
 
 extern const AP_HAL::HAL& hal;
@@ -202,7 +203,7 @@ void AC_PrecLand::init(uint16_t update_rate_hz)
 
     // create inertial history buffer
     // constrain lag parameter to be within bounds
-    _lag = constrain_float(_lag, 0.02f, 0.25f);
+    _lag.set(constrain_float(_lag, 0.02f, 0.25f));
 
     // calculate inertial buffer size from lag and minimum of main loop rate and update_rate_hz argument
     const uint16_t inertial_buffer_size = MAX((uint16_t)roundf(_lag * MIN(update_rate_hz, AP::scheduler().get_loop_rate_hz())), 1);

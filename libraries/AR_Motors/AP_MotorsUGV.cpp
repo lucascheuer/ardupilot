@@ -494,15 +494,17 @@ bool AP_MotorsUGV::pre_arm_check(bool report) const
 // sanity check parameters
 void AP_MotorsUGV::sanity_check_parameters()
 {
-    _throttle_min = constrain_int16(_throttle_min, 0, 20);
-    _throttle_max = constrain_int16(_throttle_max, 30, 100);
-    _vector_angle_max = constrain_float(_vector_angle_max, 0.0f, 90.0f);
+    _throttle_min.set(constrain_int16(_throttle_min, 0, 20));
+    _throttle_max.set(constrain_int16(_throttle_max, 30, 100));
+    _vector_angle_max.set(constrain_float(_vector_angle_max, 0.0f, 90.0f));
 }
 
 // setup pwm output type
 void AP_MotorsUGV::setup_pwm_type()
 {
     _motor_mask = 0;
+
+    hal.rcout->set_dshot_esc_type(SRV_Channels::get_dshot_esc_type());
 
     // work out mask of channels assigned to motors
     _motor_mask |= SRV_Channels::get_output_channel_mask(SRV_Channel::k_throttle);
